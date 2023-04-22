@@ -167,35 +167,40 @@ def final_step(message):
 @bot.message_handler(content_types=['photo', 'document'])
 def save_image(message):
     
-    if message.content_type == 'photo' or message.document.mime_type.startswith('image/'):
-        
-        file = File(message, bot)
-        data['image_path'] = file.save()
-                
-        bot.send_message(message.chat.id, 'Картинка загружена.' + text_for_description2, reply_markup = markup_ticket_types)
+    if len(data.get('ticket_type')) == 0:
+        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup = markup_ticket_types) 
     else:
-        bot.send_message(message.chat.id, f'Вы приложили НЕ картинку. Попробуйте еще раз.', reply_markup = markup_ticket_types)
+        if message.content_type == 'photo' or message.document.mime_type.startswith('image/'):
+            
+            file = File(message, bot)
+            data['image_path'] = file.save()
+                    
+            bot.send_message(message.chat.id, 'Картинка загружена.' + text_for_description2, reply_markup = markup_ticket_types)
+        else:
+            bot.send_message(message.chat.id, f'Вы приложили НЕ картинку. Попробуйте еще раз.', reply_markup = markup_ticket_types)
     
 @bot.message_handler(content_types=['voice', 'audio'])
 def save_voice_audio(message):
-    
-    if message.content_type == 'voice' or message.content_type == 'audio':
-        file = File(message, bot)
-        data['voice_path'] = file.save()
-        if data.get('ticket_type'):
-            data['ticket_text'] = 'Описание проблемы в голосовом сообщении. Смотри вложение в заявке.'
-            ticket = Ticket(message.chat.id,
-                            message.id,
-                            message.from_user.username,
-                            message.from_user.full_name,
-                            data.get('ticket_type'),
-                            data.get('ticket_text'),
-                            data.get('image_path'),
-                            data.get('voice_path'))
-            ticket.ticket_save()
-            data['ticket_type'], data['ticket_text'], data['image_path'], data['voice_path'] = ('', '' , '', '')
-        
-        bot.send_message(message.chat.id, 'Голосовое сообщение загружено. Ваша заявка принята в работу.', reply_markup = markup_ticket_types)
+    if len(data.get('ticket_type')) == 0:
+        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup = markup_ticket_types) 
+    else:
+        if message.content_type == 'voice' or message.content_type == 'audio':
+            file = File(message, bot)
+            data['voice_path'] = file.save()
+            if data.get('ticket_type'):
+                data['ticket_text'] = 'Описание проблемы в голосовом сообщении. Смотри вложение в заявке.'
+                ticket = Ticket(message.chat.id,
+                                message.id,
+                                message.from_user.username,
+                                message.from_user.full_name,
+                                data.get('ticket_type'),
+                                data.get('ticket_text'),
+                                data.get('image_path'),
+                                data.get('voice_path'))
+                ticket.ticket_save()
+                data['ticket_type'], data['ticket_text'], data['image_path'], data['voice_path'] = ('', '' , '', '')
+            
+            bot.send_message(message.chat.id, 'Голосовое сообщение загружено. Ваша заявка принята в работу.', reply_markup = markup_ticket_types)
 
     
 bot.infinity_polling()
