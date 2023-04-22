@@ -89,9 +89,6 @@ def dashboard():
         if 'types_ticket' in form:
             type_ticket = form['types_ticket']
             session['type_ticket'] = type_ticket
-        # if 'is_done' in form:
-        #     is_done = form['is_done']
-        #     session['is_done'] = is_done
         if 'start_date' in form:
             start_date = form['start_date']
             session['start_date'] = start_date
@@ -115,15 +112,15 @@ def tickeditails(ticket_id):
     ticket = db_working.get_ticket(ticket_id)
    
     img_path = ticket[0][14]
+    audio_path = ticket[0][15]
     form = request.form
     
     if request.method == "POST":
-        is_done = False
         employee_id = current_user.id
         ticket_response = form['ticket_response']
         ticket_note = form['ticket_note']
-        if form['is_done'] == 'on':
-            is_done  = True
+        is_done = bool(form.get('is_done'))
+    
         db_working.update_ticket(ticket_id = ticket_id,
                                  employee_id = employee_id,
                                  text_response = ticket_response,
@@ -136,7 +133,7 @@ def tickeditails(ticket_id):
         tickets = db_working.get_tickets(ticket_type_name = type_ticket, is_done = is_done)  
         return render_template('dashboard.html', types_ticket = types_ticket, selected_val = type_ticket, tickets = tickets)
     else:        
-        return render_template('ticketditails.html', ticket = ticket, form = form, img_path = img_path)
+        return render_template('ticketditails.html', ticket = ticket, form = form, img_path = img_path, audio_path = audio_path)
    
 
 @app.route('/logout')

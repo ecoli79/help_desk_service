@@ -28,7 +28,14 @@
     </div>
     <div class="card-body">
         {% if img_path %}
+        <p><b>Картинка:</b>
         <a href="{{url_for('static', filename='img/' +  img_path)}}" target="_blank">{{ img_path }}</a>
+        </p>
+        {% endif %}
+        {% if audio_path %}
+        <p><b>Аудио сообщение:</b>
+        <a href="{{url_for('static', filename='audio/' +  audio_path)}}" target="_blank">{{ audio_path }}</a>
+        </p>
         {% endif %}
     </div>
   </div>

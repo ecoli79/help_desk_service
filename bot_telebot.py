@@ -41,7 +41,8 @@ class File():
         
         if self.content_type == 'voice' or self.content_type == 'audio':
             file_bytes = bot.download_file(self.file_path_server)
-            with open(f"./static/audio/{self.file_name.split('.')[0]}.wav", 'wb') as f:
+            self.file_name = self.file_name.split('.')[0] + '.wav'             
+            with open(f"./static/audio/{self.file_name}", 'wb') as f:
                 f.write(file_bytes)
                       
         return self.file_name
@@ -160,6 +161,7 @@ def final_step(message):
                             data.get('voice_path'))
             ticket.ticket_save()
             data['ticket_type'], data['ticket_text'], data['image_path'], data['voice_path'] = ('', '' , '', '')
+            
             bot.send_message(message.chat.id, f'Ваша заявка: {text_for_reply} принята', parse_mode = 'Markdown', reply_markup = markup_ticket_types )          
     
 @bot.message_handler(content_types=['photo', 'document'])
@@ -180,6 +182,18 @@ def save_voice_audio(message):
     if message.content_type == 'voice' or message.content_type == 'audio':
         file = File(message, bot)
         data['voice_path'] = file.save()
+        if data.get('ticket_type'):
+            data['ticket_text'] = 'Описание проблемы в голосовом сообщении. Смотри вложение в заявке.'
+            ticket = Ticket(message.chat.id,
+                            message.id,
+                            message.from_user.username,
+                            message.from_user.full_name,
+                            data.get('ticket_type'),
+                            data.get('ticket_text'),
+                            data.get('image_path'),
+                            data.get('voice_path'))
+            ticket.ticket_save()
+            data['ticket_type'], data['ticket_text'], data['image_path'], data['voice_path'] = ('', '' , '', '')
         
         bot.send_message(message.chat.id, 'Голосовое сообщение загружено. Ваша заявка принята в работу.', reply_markup = markup_ticket_types)
 

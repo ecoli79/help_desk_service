@@ -314,12 +314,14 @@ def get_ticket(ticket_id):
                     t.ticket_text, t.text_response, t.note, t.is_done, t.sended,
                     e.lastname, e.firstname, e.position,
                     t.date_insert, t.date_update,
-                    i.image_path
+                    i.image_path,
+                    v.voice_path
                     from tickets t 
                     left join users u on t.user_id_created = u.id 
                     left join ticket_types tt on t.ticket_type_id = tt.id 
                     left join employee e on t.employee_id = e.id 
                     left join images i on t.id = i.ticket_id
+                    left join voices v on t.id = v.ticket_id
                     Where t.id = %s
                 """
     ticket = []

@@ -33,6 +33,6 @@ def get_data_and_send_message():
 # цикл выполнения заданий по графику
 while True:
     #schedule.run_pending() # проверяем, есть ли задания, которые нужно выполнить
-    time.sleep(5)
+    time.sleep(8)
     get_data_and_send_message()
 
