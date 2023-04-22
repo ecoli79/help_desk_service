@@ -2,8 +2,8 @@
 *.ini
 
 # static files with image  and voices 
-./static/img/
-./static/audio/
+./static/img/*
+./static/audio/*
 
 # pycache directory
 __pycache__/
