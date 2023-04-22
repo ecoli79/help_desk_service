@@ -22,9 +22,9 @@
     </select>
     
     <label for="start_date" class='form-check-label'>Дата с:</label>
-    <input style="width: 130px;" class="form-control datepicker" name="start_date" value={{ session.get('start_date') if session.get('start_date') else '' }}>
+    <input style="width: 130px;" class="form-control datepicker" name="start_date" autocomplete="off" value={{ session.get('start_date') if session.get('start_date') else '' }}>
     <label for="end_date" class='form-check-label'>По:</label>
-    <input style="width: 130px;" class="form-control datepicker" name="end_date" value={{ session.get('end_date') if session.get('end_date') else '' }} >
+    <input style="width: 130px;" class="form-control datepicker" name="end_date" autocomplete="off" value={{ session.get('end_date') if session.get('end_date') else '' }} >
     
   <div class="form-check mb-2 mr-sm-2">
   <input type="checkbox" class="form-check-input" name="is_done" {% if session.get('is_done') %}checked{% endif %} >
