@@ -33,4 +33,3 @@ def config(filename = '/home/medic/djangoproject/semds_errors/database.ini', sec
         raise Exception(f'Section {section} not found in the {filename} file') 
 
     return db
-#print(get_config_data('telegram_bot'))

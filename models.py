@@ -22,3 +22,4 @@ class User(db.Model, UserMixin):
     
     def check_password(self, password):
         return self.password == password
+    

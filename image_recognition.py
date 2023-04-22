@@ -35,3 +35,4 @@ for img in get_files_in_directory(path_to_image, '*.jpg'):
     if needed_row and needed_row > 0:
         print(f'{rows[needed_row]} - img: {img}' )
         
+        

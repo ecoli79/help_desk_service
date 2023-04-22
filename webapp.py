@@ -4,7 +4,7 @@ from flask_login import LoginManager, login_user, current_user, logout_user, log
 from flask_sqlalchemy import SQLAlchemy
 from forms import RegistrationForm, LoginForm, Databoard_searchform
 from models import User
-from configparser import ConfigParser
+from configparser import ConfigParser 
 # local module
 import config
 import db_working

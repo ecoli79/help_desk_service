@@ -35,3 +35,4 @@ while True:
     #schedule.run_pending() # проверяем, есть ли задания, которые нужно выполнить
     time.sleep(5)
     get_data_and_send_message()
+

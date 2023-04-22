@@ -11,7 +11,7 @@ bot =telebot.TeleBot(bot_token)
 
 class File():
     def __init__(self, message, bot):
-        self.content_type = message.content_type
+        self.content_type = message.content_type 
         self.file_id = ''
         
         if self.content_type == 'photo':
