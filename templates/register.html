@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-header">
+      Регистрация нового пользователя
+    </div>
+    <div class="card-body">
+      <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+          {{ form.username.label(class="form-control-label") }}
+          {{ form.username(class="form-control") }}
+        </div>
+        <div class="form-group">
+          {{ form.password.label(class="form-control-label") }}
+          {{ form.password(class="form-control") }}
+        </div>
+        <div class="form-group">
+          {{ form.confirm_password.label(class="form-control-label") }}
+          {{ form.confirm_password(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.lastname.label(class="form-control-label") }}
+            {{ form.lastname(class="form-control") }}
+          </div>
+          <div class="form-group">
+            {{ form.firstname.label(class="form-control-label") }}
+            {{ form.firstname(class="form-control") }}
+          </div>
+          <div class="form-group">
+            {{ form.position.label(class="form-control-label") }}
+            {{ form.position(class="form-control") }}
+          </div>
+          <div class="form-group">
+            {{ form.email.label(class="form-control-label") }}
+            {{ form.email(class="form-control") }}
+          </div>
+        <button type="submit" class="btn btn-primary">Регистрация</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

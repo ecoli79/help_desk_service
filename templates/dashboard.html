@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+<h4>Список заявок</h4>
+<p style="font-size: 0.8em;">количество заявок в списке: {{count_tickets}}<p>
+
+<div class="form-goup">
+<form action="/dashboard" class='form-inline' method="POST">
+
+  <label class='form-check-label' for="types_ticket">Категория заявки:</label>
+    <select class="form-control" name='types_ticket' id="types_ticket">
+        <option value="None"></option>
+        {% for type in types_ticket %}
+          {% if type[0] == selected_val %}
+            <option value="{{ type[0] }}" selected>{{ type[0] }}</option>
+          {% else %}
+             <option value="{{ type[0] }}">{{ type[0] }}</option>
+          {% endif %}
+        {% endfor %}
+    </select>
+    
+    <label for="start_date" class='form-check-label'>Дата с:</label>
+    <input style="width: 130px;" class="form-control datepicker" name="start_date" value={{ session.get('start_date') if session.get('start_date') else '' }}>
+    <label for="end_date" class='form-check-label'>По:</label>
+    <input style="width: 130px;" class="form-control datepicker" name="end_date" value={{ session.get('end_date') if session.get('end_date') else '' }} >
+    
+  <div class="form-check mb-2 mr-sm-2">
+  <input type="checkbox" class="form-check-input" name="is_done" {% if session.get('is_done') %}checked{% endif %} >
+  <label for="is_done" class='form-check-label'>Все (включая закрытые)</label>
+   </div>
+  <button type="submit" class="btn btn-primary">Применить</button>
+</form>
+</div>
+<p></p>
+
+ {% for ticket in tickets %}
+  <div class="card">
+    <div class="card-header">
+    <a href='/ticketditails/{{ ticket[0] }}'>Заявка № {{ ticket[0] }} </a>
+    дата создания: {{ ticket[12].strftime('%d.%m.%Y %H:%M') }}
+    {% if ticket[7] %}
+    <p>дата закрыти: {{ ticket[13].strftime('%d.%m.%Y %H:%M') }} <p>
+    {% endif %}
+    </div>
+    <div class="card-body">
+      <p><b>Пользователь:</b> {{ ticket[1] }}</p>
+      <p><b>Что случилось:</b> {{ ticket[4] }}</p>
+    </div>
+  </div>
+  {% endfor %}
+{% endblock %}

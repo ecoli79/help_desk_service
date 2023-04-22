@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h3>Информация о заявке {{ ticket[0][0] }}</h3>
+
+    <div class="card">
+    <div class="card-header">
+    Заявка № {{ ticket[0][0] }} от {{ ticket[0][12].strftime('%d.%m.%Y %H:%M') }}
+    {% if ticket[0][7] %}
+    заявка закрыта: {{ ticket[0][12].strftime('%d.%m.%Y %H:%M') }}
+    {% endif %}
+    </div>
+    <div class="card-body">
+      <p><b>Пользователь:</b> {{ ticket[0][1] }}</p>
+      <p><b>Что случилось:</b> {{ ticket[0][4] }}</p>
+      <p><b>Тип заявки:</b> {{ ticket[0][3] }}</p>
+      {% if ticket[0][9] %}
+      <p><b>Кто закрыл:</b>{{ ticket[0][9] }} {{ ticket[0][10] }}</p>
+      <p><b>Должность:</b>{{  ticket[0][11] }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <strong>Вложения:</strong>
+    </div>
+    <div class="card-body">
+        {% if img_path %}
+        <a href="{{url_for('static', filename='img/' +  img_path)}}" target="_blank">{{ img_path }}</a>
+        {% endif %}
+    </div>
+  </div>
+ 
+  <form action='/ticketditails/{{ticket[0][0]}}' method="POST">
+  <div class="card">
+    <div class="card-header">
+      <strong>Ответ на завку:</strong>
+    </div>
+    <div class="card-body">
+        {% if ticket[0][5] == None %}
+        <textarea rows='5' cols='76' class="card-text" name="ticket_response"></textarea>
+        {% else %}
+        <textarea rows='5' cols='76' class="card-text" name="ticket_response">{{ ticket[0][5] }}</textarea>
+        {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+        <strong>Примечание:</strong>
+    </div>
+    <div class="card-body">
+        {% if ticket[0][5] == None %}
+        <textarea rows='5' cols='76' class="card-text" name="ticket_note"></textarea>
+        {% else %}
+        <textarea rows='5' cols='76' class="card-text" name="ticket_note">{{ ticket[0][6] }}</textarea>
+        {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+        <strong>Закрыть заявку:</strong>
+    </div>
+    <div class="card-body">
+        <div class='form-group'>
+        {% if ticket[0][7] %}
+        <input type='checkbox' class="form-control" name='is_done' checked />
+        {% else %}
+        <input type='checkbox' class="form-control" name='is_done' />
+        {% endif %}
+        </div>
+    </div>
+  </div>
+      <button type="submit" class="btn btn-primary">Сохранить</button>
+    </form>
+
+
+
+{% endblock %}
