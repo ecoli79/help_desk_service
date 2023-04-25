@@ -20,6 +20,9 @@ def get_data_and_send_message():
         for ticket in tickets:
         
             message_text = ticket[2] + '\n'
+            if message_text == '\n':
+                message_text = 'Ваша заявква закрыта. Спасибо за Ваше обращение.'
+                
             bot.send_message(chat_id=ticket[1], text=message_text, reply_to_message_id=ticket[3])
             
             db_working.update_ticket(ticket_id = ticket[0], sended = True)
