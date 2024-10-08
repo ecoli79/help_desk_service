@@ -18,10 +18,8 @@ def get_connection() -> psycopg2.connect:
     except (Exception, psycopg2.DatabaseError) as error:
         return error
 
-def convert_string_fot_pg(string):
-    string_arrays = string.split('.')
-    return string_arrays[1] + '/' + string_arrays[0] + '/' + string_arrays[2]
-    
+
+
 
 def get_insert_ticket_type(type_name):
     """This method get name of ticket_type and check exist it in database or not, if not exist insert new row database if exist 
@@ -276,6 +274,12 @@ def update_ticket(ticket_id, employee_id = None, text_response='', note='', is_d
                    set employee_id = %s, text_response = %s, note = %s, is_done = %s, date_update = %s where id = %s 
                    """
     
+    query_close_work = """
+                    update tickets 
+                    set is_working = False  
+                    where id = %s
+                   """
+
     query_update_after_sended = "UPDATE tickets set sended = %s WHERE id = %s"
     
     date_update = datetime.now()
@@ -285,11 +289,19 @@ def update_ticket(ticket_id, employee_id = None, text_response='', note='', is_d
         conn = get_connection()
         
         cur = conn.cursor()
+        
+        # close working if close ticket
+        if is_done:
+            cur.execute(query_close_work, (ticket_id,))
+            conn.commit()
+
+
         if sended:
             cur.execute(query_update_after_sended, (sended, ticket_id))
             conn.commit()
+            
         else:    
-            cur.execute(query_update, (employee_id, text_response, note, is_done, date_update, ticket_id ))
+            cur.execute(query_update, (employee_id, text_response, note, is_done, date_update, ticket_id, ))
             conn.commit()
 
     except (Exception, psycopg2.Error) as error:
@@ -298,7 +310,32 @@ def update_ticket(ticket_id, employee_id = None, text_response='', note='', is_d
         if conn:
             cur.close()
             conn.close()
-            
+
+
+def ticket_in_work(ticket_id, emploeey_id, is_work):
+    '''
+    This method insert fiture is_working for ticket and insert employe who it get in work
+    '''
+
+    query_update = """UPDATE tickets
+                   set employee_id = %s, date_update = %s, is_working = %s where id = %s 
+                   """
+    
+    date_update = datetime.now()
+
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(query_update, (emploeey_id, date_update, is_work, ticket_id))
+        conn.commit()
+    
+    except (Exception, psycopg2.Error) as error:
+        return error
+    
+    finally:
+        cur.close()
+        conn.close()
+
 
 def get_ticket(ticket_id):
     """This method get detail about ticket
@@ -313,15 +350,14 @@ def get_ticket(ticket_id):
                     tt.type_name,
                     t.ticket_text, t.text_response, t.note, t.is_done, t.sended,
                     e.lastname, e.firstname, e.position,
+                    t.is_working,
                     t.date_insert, t.date_update,
-                    i.image_path,
-                    v.voice_path
+                    i.image_path
                     from tickets t 
                     left join users u on t.user_id_created = u.id 
                     left join ticket_types tt on t.ticket_type_id = tt.id 
                     left join employee e on t.employee_id = e.id 
                     left join images i on t.id = i.ticket_id
-                    left join voices v on t.id = v.ticket_id
                     Where t.id = %s
                 """
     ticket = []
@@ -359,7 +395,7 @@ def get_tickets(is_done, ticket_type_name = '',start_date = None, end_date = Non
                     t.id,
                     u.telegram_username, u.telegram_fullname,
                     tt.type_name,
-                    t.ticket_text, t.text_response, t.note, t.is_done, t.sended,
+                    t.ticket_text, t.text_response, t.note, t.is_done, t.sended, t.is_working,
                     e.lastname, e.firstname, e.position,
                     t.date_insert, t.date_update 
                     from tickets t 
@@ -371,22 +407,13 @@ def get_tickets(is_done, ticket_type_name = '',start_date = None, end_date = Non
                 """    
     tickets = []
     
-    if not is_done:
-        query_get += f" AND t.is_done = {False}"
+    
     
     if ticket_type_name and ticket_type_name != 'None':
         query_get += f" AND tt.type_name like '%%{ticket_type_name}%%' "
     
-    #if is_done != 'on':
-        
-    
-    if start_date and end_date:
-        query_get += f" AND t.date_insert between '{convert_string_fot_pg(start_date)}' and '{convert_string_fot_pg(end_date)}'"
-    elif start_date:
-        query_get += f" AND t.date_insert > '{convert_string_fot_pg(start_date)}'"
-        
-    elif end_date:
-        query_get += f" AND t.date_insert < '{convert_string_fot_pg(end_date)}'"
+    if is_done != 'on':
+        query_get += f" AND t.is_done = {False}"
     
         
     query_get += ' order by t.date_insert DESC'
@@ -435,3 +462,4 @@ def get_tickets_for_send():
             cur.close()
             
         return tickets
+
