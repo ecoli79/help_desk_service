@@ -57,7 +57,10 @@ pip install psycopg2 pyTelegramBotAPI flask flask-login flask-sqlalchemy flask-w
 psql -U admin -d bot_support -f bot_support.sql
 ```
 
-4. Создать файл конфигурации `config.ini`:
+4. Создать файл конфигурации `config.ini` в корне проекта:
+
+Все настройки для подключения к БД и токены ботов хранятся в этом файле.
+Он добавлен в `.gitignore` и **не попадает в репозиторий** -- каждый разработчик создает его локально.
 
 ```ini
 [postgresql]
@@ -72,6 +75,12 @@ token = YOUR_TELEGRAM_BOT_TOKEN
 [max_bot]
 token = YOUR_MAX_BOT_TOKEN
 ```
+
+| Секция | Параметры | Используется в |
+|---|---|---|
+| `postgresql` | `host`, `database`, `user`, `password` | `db_working.py`, `webapp.py` |
+| `telegram_bot` | `token` | `bot_telebot.py`, `sheduler_for_response_bot.py` |
+| `max_bot` | `token` | `bot_max.py`, `sheduler_for_response_max.py` |
 
 ## Запуск
 
