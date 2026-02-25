@@ -1,437 +1,424 @@
-from datetime import date, datetime
-import psycopg2
-from configparser import ConfigParser
-from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData
-from sqlalchemy import select
+import logging
+from contextlib import contextmanager
+from datetime import datetime
 
-# local module
+import psycopg2
+
 import config
 
+logger = logging.getLogger(__name__)
 
-def get_connection() -> psycopg2.connect: 
-    conn = None
+
+@contextmanager
+def db_cursor():
+    """Context manager providing a database cursor with auto-commit and rollback on error."""
+    conn = psycopg2.connect(**config.get_config_data('postgresql'))
+    cur = conn.cursor()
     try:
-        params = config.get_config_data('postgresql')
-        conn = psycopg2.connect(**params)
-        return conn
-    
-    except (Exception, psycopg2.DatabaseError) as error:
-        return error
+        yield cur
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
 
-def convert_string_fot_pg(string):
-    string_arrays = string.split('.')
-    return string_arrays[1] + '/' + string_arrays[0] + '/' + string_arrays[2]
-    
 
-def get_insert_ticket_type(type_name):
-    """This method get name of ticket_type and check exist it in database or not, if not exist insert new row database if exist 
-    get item from database
+def _get_or_create_user(cur, telegramUsername, telegramFullname=''):
+    """Internal: get or create a telegram user using an existing cursor."""
+    queryInsert = (
+        'INSERT INTO users (telegram_username, telegram_fullname, date_insert, date_update) '
+        'VALUES (%s, %s, %s, %s)'
+    )
+    queryGet = 'SELECT id, telegram_username, telegram_fullname FROM users WHERE telegram_username = %s'
+    dateNow = datetime.now()
+
+    if telegramUsername is None:
+        telegramUsername = telegramFullname
+
+    cur.execute(queryGet, (telegramUsername,))
+    userDb = cur.fetchall()
+
+    if not userDb:
+        cur.execute(queryInsert, (telegramUsername, telegramFullname, dateNow, dateNow))
+        cur.execute(queryGet, (telegramUsername,))
+        userDb = cur.fetchall()
+
+    return userDb
+
+
+def _get_or_create_ticket_type(cur, typeName):
+    """Internal: get or create a ticket type using an existing cursor."""
+    queryInsert = 'INSERT INTO ticket_types (type_name, date_insert, date_update) VALUES (%s, %s, %s)'
+    queryGet = 'SELECT id, type_name FROM ticket_types WHERE type_name = %s'
+    dateNow = datetime.now()
+
+    cur.execute(queryGet, (typeName,))
+    ticketTypeDb = cur.fetchall()
+
+    if not ticketTypeDb:
+        cur.execute(queryInsert, (typeName, dateNow, dateNow))
+        cur.execute(queryGet, (typeName,))
+        ticketTypeDb = cur.fetchall()
+
+    return ticketTypeDb
+
+
+def _save_image(cur, imagePath, ticketId):
+    """Internal: save an image path linked to a ticket."""
+    queryInsert = (
+        'INSERT INTO images (image_path, ticket_id, date_insert, date_update) '
+        'VALUES (%s, %s, %s, %s)'
+    )
+    dateNow = datetime.now()
+    cur.execute(queryInsert, (imagePath, ticketId, dateNow, dateNow))
+
+
+def _save_audio(cur, audioPath, ticketId):
+    """Internal: save an audio path linked to a ticket."""
+    queryInsert = (
+        'INSERT INTO voices (ticket_id, voice_path, date_insert, date_update) '
+        'VALUES (%s, %s, %s, %s)'
+    )
+    dateNow = datetime.now()
+    cur.execute(queryInsert, (ticketId, audioPath, dateNow, dateNow))
+
+
+def get_insert_ticket_type(typeName):
+    """Get ticket type by name, creating it if it doesn't exist.
 
     Args:
-        ticket_type_name (str): name of ticket_type
+        typeName (str): name of ticket type
+
+    Returns:
+        list[tuple]: [(id, type_name)] or [] on error
     """
-    
-    query_insert = "INSERT INTO ticket_types (type_name, date_insert, date_update) VALUES (%s, %s, %s)"
-    query_get = """ SELECT id, type_name FROM ticket_types WHERE type_name = %s """
-    ticket_type_db = []
-    date_update = datetime.now()
-    
     try:
-        conn = get_connection()
-        
-        cur = conn.cursor()
-        
-        cur.execute(query_get, (type_name,))
-        ticket_type_db = cur.fetchall()
-        
-        if not ticket_type_db:
-            cur.execute(query_insert, (type_name, date_update, date_update))
-            conn.commit()
-            cur.execute(query_get, (type_name,))
-            ticket_type_db = cur.fetchall()
-        
-    except (Exception, psycopg2.Error) as error:
-        print(error)
-    
-    finally:
-        
-        if conn:
-            cur.close()
-            conn.close()
-            
-            return ticket_type_db        
+        with db_cursor() as cur:
+            return _get_or_create_ticket_type(cur, typeName)
+    except (Exception, psycopg2.Error):
+        logger.exception('Failed to get/insert ticket type: %s', typeName)
+        return []
 
 
 def get_ticket_types():
-    """This method return all ticket type names in database
+    """Return all ticket type names from database.
 
     Returns:
-         list[(str)] list of tuple   
+        list[tuple]: [(type_name,), ...] or [] on error
     """
-    
-    query_get = "select type_name from ticket_types"
-    ticket_types = []
-    
     try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute(query_get,)
-        ticket_types = cur.fetchall()
-               
-
-    except (Exception, psycopg2.Error) as error:
-        print(error)
-    
-    finally:
-        conn.close()
-        cur.close()
-        return ticket_types
+        with db_cursor() as cur:
+            cur.execute('SELECT type_name FROM ticket_types')
+            return cur.fetchall()
+    except (Exception, psycopg2.Error):
+        logger.exception('Failed to get ticket types')
+        return []
 
 
-def get_insert_user_telegram(telegram_username, telegram_fullname=""):
-    """This method get name of telegram_user and check exist it in database or not, if not exist insert new row database if exist 
-    get item from database
+def get_insert_user_telegram(telegramUsername, telegramFullname=''):
+    """Get telegram user by username, creating if doesn't exist.
 
     Args:
-        telegram_username (str): nick in telegram
-        telegram_firstname (str): lastname of user in telegram
-        telegram_lastname (str): lastname of user in telegram
+        telegramUsername (str): nick in telegram
+        telegramFullname (str): full name of user in telegram
+
+    Returns:
+        list[tuple]: [(id, telegram_username, telegram_fullname)] or [] on error
     """
-    
-    query_insert = "INSERT INTO users (telegram_username, telegram_fullname, date_insert, date_update) VALUES (%s, %s, %s, %s)"
-    query_get = """ SELECT id, telegram_username, telegram_fullname FROM users WHERE telegram_username = %s """
-    user_db = []
-    date_update = datetime.now()
-    
-    if telegram_username is None:
-        telegram_username = telegram_fullname
-    
     try:
-        conn = get_connection()
-        
-        cur = conn.cursor()
-        
-        cur.execute(query_get, (telegram_username,))
-        user_db = cur.fetchall()
-        
-        if not user_db:
-            cur.execute(query_insert, (telegram_username, telegram_fullname,date_update, date_update))
-            conn.commit()
-            cur.execute(query_get, (telegram_username,))
-            user_db = cur.fetchall()
-        
-    except (Exception, psycopg2.Error) as error:
-        print(error)
-    
-    finally:
-        
-        if conn:
-            cur.close()
-            conn.close()
-            
-            return user_db     
-        
-        
-def image_get_save(image_path, ticket_id):
-    """This method save in database path to image/images connection with ticket
-    if image_path == '' method only return image_path
+        with db_cursor() as cur:
+            return _get_or_create_user(cur, telegramUsername, telegramFullname)
+    except (Exception, psycopg2.Error):
+        logger.exception('Failed to get/insert telegram user: %s', telegramUsername)
+        return []
+
+
+def image_get_save(imagePath, ticketId):
+    """Save or retrieve image path linked to a ticket.
+    If imagePath is truthy, saves it. Otherwise retrieves existing images.
 
     Args:
-        image_path (str): path in disk for image
-        ticket_id (int): id ticket
+        imagePath (str): path to image file on disk
+        ticketId (int): id of the ticket
+
+    Returns:
+        list[tuple]: image records or [] on error
     """
-    
-    query_insert = "INSERT INTO images (image_path, ticket_id, date_insert, date_update) VALUES (%s, %s, %s, %s)"
-    query_get = "SELECT image_path, ticket_id FROM images WHERE ticket_id = %s"
-    image_db = []
-    date_update = datetime.now()
-    
     try:
-        
-        conn = get_connection()
-        
-        cur = conn.cursor()
-        
-        if image_path:
-            cur.execute(query_insert, (image_path, ticket_id, date_update, date_update))
-            conn.commit()
-        else:
-            cur.execute(query_get, (ticket_id,))
-            image_db = cur.fetchall()
-            
-        
-    except (Exception, psycopg2.Error) as error:
-        print(error)
-    
-    finally:
-        
-        if conn:
-            cur.close()
-            conn.close()
-            
-            return image_db   
+        with db_cursor() as cur:
+            if imagePath:
+                _save_image(cur, imagePath, ticketId)
+                return []
+            else:
+                cur.execute(
+                    'SELECT image_path, ticket_id FROM images WHERE ticket_id = %s',
+                    (ticketId,),
+                )
+                return cur.fetchall()
+    except (Exception, psycopg2.Error):
+        logger.exception('Failed to save/get image for ticket %s', ticketId)
+        return []
 
 
-def get_insert_audio(audio_path, ticket_id):
-    """This method save in database path to voice message linked with ticke
-    if audio_path == '' method return path to file
+def get_insert_audio(audioPath, ticketId):
+    """Save or retrieve audio path linked to a ticket.
+    If audioPath is truthy, saves it. Otherwise retrieves existing audio records.
 
     Args:
-        audio_path (str): path to file *.wav on server
-        ticket_id (int): ticke_id linked ticket
-    """
-    
-    query_get = "SELECT voice_path, ticke_id FROM voices WHERE ticket_id = %s"
-    query_insert = "INSERT into voices(ticket_id, voice_path, date_insert, date_update) VALUES (%s, %s, %s, %s)" 
-    voice_db = []
-    data_update = datetime.now()
-    
-    try:
-        
-        conn = get_connection()
-        
-        cur = conn.cursor()
-        
-        if audio_path:
-            cur.execute(query_insert, (ticket_id, audio_path, data_update, data_update,))
-            conn.commit()
-        else:
-            cur.execute(query_get, (ticket_id, ))
-            voice_db = cur.fetchall()
-    except (Exception, psycopg2.Error) as error:
-        print(error)
-        
-    finally:
-        if conn:
-            cur.close()
-            conn.close()
-            
-            return voice_db
-    
+        audioPath (str): path to *.wav file on server
+        ticketId (int): id of the linked ticket
 
-def insert_ticket(telegram_username, telegram_fullname, ticket_type_name, ticket_text, telegram_chatid, telegram_message_id, image_path, voice_path):
-    """This method insert new ticket in database.
-    Inside method create new item for images by image_path.
-    If telegram_username not exist in database, will create it as new item.
+    Returns:
+        list[tuple]: audio records or [] on error
+    """
+    try:
+        with db_cursor() as cur:
+            if audioPath:
+                _save_audio(cur, audioPath, ticketId)
+                return []
+            else:
+                cur.execute(
+                    'SELECT voice_path, ticket_id FROM voices WHERE ticket_id = %s',
+                    (ticketId,),
+                )
+                return cur.fetchall()
+    except (Exception, psycopg2.Error):
+        logger.exception('Failed to save/get audio for ticket %s', ticketId)
+        return []
+
+
+def insert_ticket(telegramUsername, telegramFullname, ticketTypeName, ticketText,
+                  telegramChatid, telegramMessageId, imagePath, voicePath, maxMessageId=None):
+    """Insert a new ticket with related user, type, image, and audio in a single transaction.
 
     Args:
-        telegram_username (str): username in telegram
-        ticket_type_name (str): ticke_type_name, if that type_name not exist, will create it in new item in database
-        ticket_text (str): text of the ticket
-        telegram_chatid (str): id of a chat in telegram bot
-        image_path (str): path to image in disk
+        telegramUsername (str): username in telegram
+        telegramFullname (str): full name of user in telegram
+        ticketTypeName (str): ticket type name (created if not exists)
+        ticketText (str): text of the ticket
+        telegramChatid (str): id of the chat in telegram bot
+        telegramMessageId (int): message id from telegram
+        imagePath (str): path to image on disk
+        voicePath (str): path to voice file on disk
+        maxMessageId (str, optional): message id from MAX messenger for reply quotes
+
+    Returns:
+        tuple|list: (ticket_id,) or [] on error
     """
-    
-    query_insert = """INSERT INTO tickets (user_id_created, ticket_type_id, ticket_text, telegram_chatid, telegram_message_id, date_insert, date_update, is_done, sended)
-                      VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;"""
-    
-    if telegram_username is None:
-        telegram_username = telegram_fullname
-    
-    user_created_db = get_insert_user_telegram(telegram_username, telegram_fullname)
-    ticket_type_db = get_insert_ticket_type(ticket_type_name)
-    date_update = datetime.now()
-    ticket = []
-    
+    queryInsert = (
+        'INSERT INTO tickets '
+        '(user_id_created, ticket_type_id, ticket_text, telegram_chatid, telegram_message_id, '
+        'date_insert, date_update, is_done, sended, max_message_id) '
+        'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id'
+    )
+
+    if telegramUsername is None:
+        telegramUsername = telegramFullname
+
     try:
-        
-        conn = get_connection()
-        
-        cur = conn.cursor()
-        cur.execute(query_insert, (user_created_db[0][0], ticket_type_db[0][0], ticket_text, telegram_chatid, telegram_message_id, date_update, date_update, False, False))
-        conn.commit()
-        ticket = cur.fetchone()
-        
-        
-        if image_path:
-            image_get_save(image_path, ticket[0])
-        if voice_path:
-            get_insert_audio(voice_path, ticket[0])        
-        
-    except (Exception, psycopg2.Error) as error:
-        print(error)
-    
-    finally:
-        
-        if conn:
-            cur.close()
-            conn.close()
-            
-            return ticket   
+        with db_cursor() as cur:
+            userDb = _get_or_create_user(cur, telegramUsername, telegramFullname)
+            ticketTypeDb = _get_or_create_ticket_type(cur, ticketTypeName)
+            dateNow = datetime.now()
 
-        
-def update_ticket(ticket_id, employee_id = None, text_response='', note='', is_done = False, sended = False):
-    """This method is get ticket in database and give it to employee for editing. After, the ticket save to database with new data
+            cur.execute(queryInsert, (
+                userDb[0][0], ticketTypeDb[0][0], ticketText,
+                telegramChatid, telegramMessageId,
+                dateNow, dateNow, False, False, maxMessageId,
+            ))
+            ticket = cur.fetchone()
 
-    Args:
-        ticket_id (int): id of ticket
-        employee_id (id): id of employee
-        text_response (str): text for anwer for user in ticket
-        note (str): note for ticket
-        is_done (bool, optional): It's param for close a ticket is True ticket is close, if False - ticket is open  Defaults to False.
-        sended (bool, optional): It's param for check sended answer for ticket.If it True is that answer did sent or otherwise.  Defaults to False.
-    """
-    
-    query_update = """UPDATE tickets
-                   set employee_id = %s, text_response = %s, note = %s, is_done = %s, date_update = %s where id = %s 
-                   """
-    
-    query_update_after_sended = "UPDATE tickets set sended = %s WHERE id = %s"
-    
-    date_update = datetime.now()
-    ticket = []
-    
-    try:
-        conn = get_connection()
-        
-        cur = conn.cursor()
-        if sended:
-            cur.execute(query_update_after_sended, (sended, ticket_id))
-            conn.commit()
-        else:    
-            cur.execute(query_update, (employee_id, text_response, note, is_done, date_update, ticket_id ))
-            conn.commit()
+            if imagePath:
+                _save_image(cur, imagePath, ticket[0])
+            if voicePath:
+                _save_audio(cur, voicePath, ticket[0])
 
-    except (Exception, psycopg2.Error) as error:
-        return error
-    finally:
-        if conn:
-            cur.close()
-            conn.close()
-            
-
-def get_ticket(ticket_id):
-    """This method get detail about ticket
-
-    Args:
-        ticket_id (int): id ticket
-    """
-    
-    query_get = """select 
-                    t.id,
-                    u.telegram_username, u.telegram_fullname,
-                    tt.type_name,
-                    t.ticket_text, t.text_response, t.note, t.is_done, t.sended,
-                    e.lastname, e.firstname, e.position,
-                    t.date_insert, t.date_update,
-                    i.image_path,
-                    v.voice_path
-                    from tickets t 
-                    left join users u on t.user_id_created = u.id 
-                    left join ticket_types tt on t.ticket_type_id = tt.id 
-                    left join employee e on t.employee_id = e.id 
-                    left join images i on t.id = i.ticket_id
-                    left join voices v on t.id = v.ticket_id
-                    Where t.id = %s
-                """
-    ticket = []
-    
-    try:
-        
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute(query_get, (ticket_id, ))
-        ticket = cur.fetchall()
-    
-    except (Exception, psycopg2.Error) as error:
-        return error
-    
-    finally:
-        if conn:
-            cur.close()
-            conn.close()
-            
             return ticket
-        
-            
-def get_tickets(is_done, ticket_type_name = '',start_date = None, end_date = None):
-    """This method get a list of tickts by any parameters. Return list of tuples tickets order by date_insert DESC
+    except (Exception, psycopg2.Error):
+        logger.exception('Failed to insert ticket')
+        return []
+
+
+def update_ticket(ticketId, employeeId=None, textResponse='', note='', isDone=False, sended=False):
+    """Update ticket fields: response, note, status, or mark as sent.
 
     Args:
-        ticket_type_name (str, optional): Tycket_type_name Defaults to None.
-        start_date (str, optional): Start date for search by date interval create . Defaults to None.
-        end_date (str, optional): End date for search by date interval create. Defaults to None.
-        employee_id (int, optional): id employee who answer for ticket. Defaults to None.
-        telegram_user (str, optional): username telegram who created a ticket. Defaults to None.
+        ticketId (int): id of the ticket
+        employeeId (int, optional): id of the employee
+        textResponse (str): text response for the user
+        note (str): internal note for the ticket
+        isDone (bool): True to close the ticket
+        sended (bool): True to mark the response as sent
     """
-    
-    query_get = """ select 
-                    t.id,
-                    u.telegram_username, u.telegram_fullname,
-                    tt.type_name,
-                    t.ticket_text, t.text_response, t.note, t.is_done, t.sended,
-                    e.lastname, e.firstname, e.position,
-                    t.date_insert, t.date_update 
-                    from tickets t 
-                    left join users u on t.user_id_created = u.id 
-                    left join ticket_types tt on t.ticket_type_id = tt.id 
-                    left join employee e on t.employee_id = e.id 
-                    left join images i on t.id = i.ticket_id
-                    WHERE 1=1   
-                """    
-    tickets = []
-    
-    if not is_done:
-        query_get += f" AND t.is_done = {False}"
-    
-    if ticket_type_name and ticket_type_name != 'None':
-        query_get += f" AND tt.type_name like '%%{ticket_type_name}%%' "
-    
-    #if is_done != 'on':
-        
-    
-    if start_date and end_date:
-        query_get += f" AND t.date_insert between '{convert_string_fot_pg(start_date)}' and '{convert_string_fot_pg(end_date)}'"
-    elif start_date:
-        query_get += f" AND t.date_insert > '{convert_string_fot_pg(start_date)}'"
-        
-    elif end_date:
-        query_get += f" AND t.date_insert < '{convert_string_fot_pg(end_date)}'"
-    
-        
-    query_get += ' order by t.date_insert DESC'
-           
-    try:
-        
-        conn = get_connection()
-        
-        cur = conn.cursor()
-        cur.execute(query_get, ())
-        tickets = cur.fetchall()
+    queryUpdate = (
+        'UPDATE tickets '
+        'SET employee_id = %s, text_response = %s, note = %s, is_done = %s, date_update = %s '
+        'WHERE id = %s'
+    )
+    queryCloseWork = 'UPDATE tickets SET is_working = False WHERE id = %s'
+    queryMarkSended = 'UPDATE tickets SET sended = %s WHERE id = %s'
 
-    
-    except (Exception, psycopg2.Error) as error:
-        return error
-    
-    finally:
-        if conn:
-            conn.close()
-            cur.close()
-            
-            return tickets
+    try:
+        with db_cursor() as cur:
+            if isDone:
+                cur.execute(queryCloseWork, (ticketId,))
+
+            if sended:
+                cur.execute(queryMarkSended, (sended, ticketId))
+            else:
+                dateNow = datetime.now()
+                cur.execute(queryUpdate, (
+                    employeeId, textResponse, note, isDone, dateNow, ticketId,
+                ))
+    except (Exception, psycopg2.Error):
+        logger.exception('Failed to update ticket %s', ticketId)
+
+
+def ticket_in_work(ticketId, employeeId, isWork):
+    """Mark a ticket as being worked on by an employee.
+
+    Args:
+        ticketId (int): id of the ticket
+        employeeId (int): id of the employee
+        isWork (bool): True if ticket is being worked on
+    """
+    queryUpdate = (
+        'UPDATE tickets '
+        'SET employee_id = %s, date_update = %s, is_working = %s '
+        'WHERE id = %s'
+    )
+
+    try:
+        with db_cursor() as cur:
+            dateNow = datetime.now()
+            cur.execute(queryUpdate, (employeeId, dateNow, isWork, ticketId))
+    except (Exception, psycopg2.Error):
+        logger.exception('Failed to set ticket %s in work', ticketId)
+
+
+def get_ticket(ticketId):
+    """Get detailed information about a ticket by ID.
+
+    Args:
+        ticketId (int): id of the ticket
+
+    Returns:
+        list[tuple]: ticket details or [] on error
+    """
+    queryGet = (
+        'SELECT '
+        '  t.id, '
+        '  u.telegram_username, u.telegram_fullname, '
+        '  tt.type_name, '
+        '  t.ticket_text, t.text_response, t.note, t.is_done, t.sended, '
+        '  e.lastname, e.firstname, e.position, '
+        '  t.is_working, '
+        '  t.date_insert, t.date_update, '
+        '  i.image_path '
+        'FROM tickets t '
+        'LEFT JOIN users u ON t.user_id_created = u.id '
+        'LEFT JOIN ticket_types tt ON t.ticket_type_id = tt.id '
+        'LEFT JOIN employee e ON t.employee_id = e.id '
+        'LEFT JOIN images i ON t.id = i.ticket_id '
+        'WHERE t.id = %s'
+    )
+
+    try:
+        with db_cursor() as cur:
+            cur.execute(queryGet, (ticketId,))
+            return cur.fetchall()
+    except (Exception, psycopg2.Error):
+        logger.exception('Failed to get ticket %s', ticketId)
+        return []
+
+
+def get_tickets(isDone, ticketTypeName='', startDate=None, endDate=None):
+    """Get a filtered list of tickets ordered by date_insert DESC.
+
+    Args:
+        isDone (str): 'on' to include closed tickets, any other value to filter open only
+        ticketTypeName (str, optional): filter by ticket type name
+        startDate (str, optional): start date for date range filter
+        endDate (str, optional): end date for date range filter
+
+    Returns:
+        list[tuple]: list of ticket tuples or [] on error
+    """
+    queryGet = (
+        'SELECT '
+        '  t.id, '
+        '  u.telegram_username, u.telegram_fullname, '
+        '  tt.type_name, '
+        '  t.ticket_text, t.text_response, t.note, t.is_done, t.sended, t.is_working, '
+        '  e.lastname, e.firstname, e.position, '
+        '  t.date_insert, t.date_update '
+        'FROM tickets t '
+        'LEFT JOIN users u ON t.user_id_created = u.id '
+        'LEFT JOIN ticket_types tt ON t.ticket_type_id = tt.id '
+        'LEFT JOIN employee e ON t.employee_id = e.id '
+        'LEFT JOIN images i ON t.id = i.ticket_id '
+        'WHERE 1=1'
+    )
+    params = []
+
+    if ticketTypeName and ticketTypeName != 'None':
+        queryGet += ' AND tt.type_name LIKE %s'
+        params.append(f'%{ticketTypeName}%')
+
+    if isDone != 'on':
+        queryGet += ' AND t.is_done = %s'
+        params.append(False)
+
+    queryGet += ' ORDER BY t.date_insert DESC'
+
+    try:
+        with db_cursor() as cur:
+            cur.execute(queryGet, tuple(params))
+            return cur.fetchall()
+    except (Exception, psycopg2.Error):
+        logger.exception('Failed to get tickets')
+        return []
 
 
 def get_tickets_for_send():
-    """This method get list of tickets for send it to telegram bot.
-       Get ticket with option is_done = True and sended is False
+    """Get closed tickets with unsent responses for Telegram bot.
+
+    Returns:
+        list[tuple]: [(id, telegram_chatid, text_response, telegram_message_id), ...] or [] on error
     """
-    query_get = """select t.id, t.telegram_chatid, t.text_response, t.telegram_message_id from tickets t  
-                   where is_done = true and sended = false """
-                   
-    tickets = []
-    
+    queryGet = (
+        'SELECT t.id, t.telegram_chatid, t.text_response, t.telegram_message_id '
+        'FROM tickets t '
+        'WHERE is_done = true AND sended = false AND telegram_message_id != 0'
+    )
+
     try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute(query_get, ())
-        tickets = cur.fetchall()
-        
-    except (Exception, psycopg2.Error) as error:
-        return(error)
-    
-    finally:
-        if conn:
-            conn.close()
-            cur.close()
-            
-        return tickets
+        with db_cursor() as cur:
+            cur.execute(queryGet)
+            return cur.fetchall()
+    except (Exception, psycopg2.Error):
+        logger.exception('Failed to get tickets for sending')
+        return []
+
+
+def get_tickets_for_send_max():
+    """Get closed tickets created by MAX bot for sending response back via MAX messenger.
+
+    Returns:
+        list[tuple]: [(id, telegram_chatid, text_response, max_message_id), ...] or [] on error
+    """
+    queryGet = (
+        'SELECT t.id, t.telegram_chatid, t.text_response, t.max_message_id '
+        'FROM tickets t '
+        'WHERE is_done = true AND sended = false AND telegram_message_id = 0'
+    )
+
+    try:
+        with db_cursor() as cur:
+            cur.execute(queryGet)
+            return cur.fetchall()
+    except (Exception, psycopg2.Error):
+        logger.exception('Failed to get MAX tickets for sending')
+        return []

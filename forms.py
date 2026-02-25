@@ -26,4 +26,3 @@ class Databoard_searchform(FlaskForm):
     start_date = DateField('Начало')
     end_date = DateField('Окончание')
     is_done = BooleanField('Включая закрытые')
-    

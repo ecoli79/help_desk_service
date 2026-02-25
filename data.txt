@@ -1,0 +1,19 @@
+chat_id:0 ticket_type:0 ticket_text:все плохо, ничего не подписывает совершенно!! image_path
+chat_id:0 ticket_type:0 ticket_text:плохо!! image_path
+chat_id:453062141 ticket_type:0 ticket_text:dslkgjsldfl image_path:./img/AgADxS0AAvn_wEk.jpg
+chat_id:453062141 ticket_type:0 ticket_text:ошибка при подписании сэмда, помоги пожалуйста ее решить image_path:./img/AgADiCgAAoXf0Ek.jpg
+chat_id:453062141 ticket_type:Подписание ticket_text:подписание сэмд выходит вот такая ошибка, че с ней делать? image_path:./img/AgAD_ygAAoXf0Ek.jpg
+chat_id:453062141 ticket_type:Подписание ticket_text:ошибка при подписании СЭМДа, помогите пожалуйста image_path:./img/AgADCikAAoXf0Ek.jpg
+chat_id:453062141 ticket_type:Подписание ticket_text:sdgsadfsdf image_path:./img/AgADfykAAoXf0Ek.jpg
+chat_id:453062141 ticket_type:Подписание ticket_text:sdf sdfsa hasfd sdf image_path:
+chat_id:453062141 ticket_type:Подписание ticket_text:первая заявка. тест пинга image_path:
+chat_id:453062141 ticket_type:Подписание ticket_text:sdaf;klgjsa s;lkfj s; s;dfkjsf image_path:./img/AgADNioAAoXf0Ek.jpg
+chat_id:453062141 ticket_type:Подписание ticket_text:вот такой пример image_path:./img/AgADOSoAAoXf0Ek.jpg
+chat_id:453062141 ticket_type:Подписание ticket_text:ну вот так вот это происходит image_path:./img/AgADUCoAAoXf0Ek.jpg
+chat_id:453062141 ticket_type:Подписание ticket_text:еще один пример таска для подписания image_path:./img/AgADVSoAAoXf0Ek.jpg
+chat_id:453062141 ticket_type:Подписание ticket_text:ошибка пр иподписании СЭМДа image_path:./img/AgAD_CoAAiwi4Ek.mp4
+chat_id:453062141 ticket_type:Подписание ticket_text:ошибка при подписании СЭМД image_path:./img/AgADAisAAiwi4Ek.mp4
+chat_id:453062141 ticket_type:Подписание ticket_text:проблема с описанием и подписанием,  не могу никак подписать выходит вот такая ошибка как на фото. image_path:./img/AgADmCwAAiwi4Ek.jpg
+chat_id:453062141 ticket_type:Подписание ticket_text:кошмар, ужас, ничего не подписывает и все тормозит! image_path:AgADrCwAAiwi4Ek.jpg
+chat_id:453062141 ticket_type:Подписание ticket_text:все плохо, ничего не помогает image_path:AgAD0SwAAiwi4Ek.mp4
+chat_id:453062141 ticket_type:Подписание ticket_text:проба фотографии загрузка image_path:AgAD1SwAAiwi4Ek.jpg

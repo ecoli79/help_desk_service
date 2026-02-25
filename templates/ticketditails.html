@@ -1,15 +1,25 @@
-{% extends 'base.html' %} 
+{% extends 'base.html' %}
 
 {% block content %}
 
 <h3>Информация о заявке {{ ticket[0][0] }}</h3>
+   
+{% if ticket[0][12] %}
+<div class="alert alert-primary" role="alert">В работе</div>
+{% else %}
+<form action="/work/{{ticket[0][0]}}" method="POST">
+  <button type="submit" class="btn btn-primary">В работу</button>
+</form>
+{% endif %}
 
     <div class="card">
     <div class="card-header">
-    Заявка № {{ ticket[0][0] }} от {{ ticket[0][12].strftime('%d.%m.%Y %H:%M') }}
+
+    Заявка № {{ ticket[0][0] }} от {{ ticket[0][13].strftime('%d.%m.%Y %H:%M') }}
     {% if ticket[0][7] %}
-    заявка закрыта: {{ ticket[0][12].strftime('%d.%m.%Y %H:%M') }}
+    заявка закрыта: {{ ticket[0][14].strftime('%d.%m.%Y %H:%M') }}
     {% endif %}
+
     </div>
     <div class="card-body">
       <p><b>Пользователь:</b> {{ ticket[0][1] }}</p>
@@ -28,14 +38,7 @@
     </div>
     <div class="card-body">
         {% if img_path %}
-        <p><b>Картинка:</b>
         <a href="{{url_for('static', filename='img/' +  img_path)}}" target="_blank">{{ img_path }}</a>
-        </p>
-        {% endif %}
-        {% if audio_path %}
-        <p><b>Аудио сообщение:</b>
-        <a href="{{url_for('static', filename='audio/' +  audio_path)}}" target="_blank">{{ audio_path }}</a>
-        </p>
         {% endif %}
     </div>
   </div>
@@ -73,11 +76,7 @@
     </div>
     <div class="card-body">
         <div class='form-group'>
-        {% if ticket[0][7] %}
-        <input type='checkbox' class="form-control" name='is_done' checked />
-        {% else %}
-        <input type='checkbox' class="form-control" name='is_done' />
-        {% endif %}
+          <input type='checkbox' class="form-control" name='is_done' {% if ticket[0][7] %}checked{% endif %} />
         </div>
     </div>
   </div>

@@ -1,10 +1,9 @@
-{% extends 'base.html' %} 
+{% extends 'base.html' %}
 
 
 {% block content %}
 
-<h4>Список заявок</h4>
-<p style="font-size: 0.8em;">количество заявок в списке: {{count_tickets}}<p>
+<h2>Список заявок</h2>
 
 <div class="form-goup">
 <form action="/dashboard" class='form-inline' method="POST">
@@ -22,12 +21,12 @@
     </select>
     
     <label for="start_date" class='form-check-label'>Дата с:</label>
-    <input style="width: 130px;" class="form-control datepicker" name="start_date" autocomplete="off" value={{ session.get('start_date') if session.get('start_date') else '' }}>
+    <input style="width: 130px;" class="form-control datepicker" name="start_date">
     <label for="end_date" class='form-check-label'>По:</label>
-    <input style="width: 130px;" class="form-control datepicker" name="end_date" autocomplete="off" value={{ session.get('end_date') if session.get('end_date') else '' }} >
+    <input style="width: 130px;" class="form-control datepicker" name="end_date">
     
   <div class="form-check mb-2 mr-sm-2">
-  <input type="checkbox" class="form-check-input" name="is_done" {% if session.get('is_done') %}checked{% endif %} >
+  <input type="checkbox" class="form-check-input" name="done_tickets" {{ session.get('done_tickets') }} >
   <label for="is_done" class='form-check-label'>Все (включая закрытые)</label>
    </div>
   <button type="submit" class="btn btn-primary">Применить</button>
@@ -39,9 +38,14 @@
   <div class="card">
     <div class="card-header">
     <a href='/ticketditails/{{ ticket[0] }}'>Заявка № {{ ticket[0] }} </a>
-    дата создания: {{ ticket[12].strftime('%d.%m.%Y %H:%M') }}
+    дата создания: {{ ticket[13].strftime('%d.%m.%Y %H:%M') }}
+    
+    {% if ticket[9] %}
+    <button type="button" class="btn btn-primary position-relative">В работе</button>
+    {% endif %}
+
     {% if ticket[7] %}
-    <p>дата закрыти: {{ ticket[13].strftime('%d.%m.%Y %H:%M') }} <p>
+    <p>дата закрыти: {{ ticket[14].strftime('%d.%m.%Y %H:%M') }} <p>
     {% endif %}
     </div>
     <div class="card-body">
