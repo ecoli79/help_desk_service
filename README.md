@@ -54,6 +54,7 @@ pip install psycopg2 pyTelegramBotAPI flask flask-login flask-sqlalchemy flask-w
 3. Создать базу данных PostgreSQL и применить схему:
 
 ```bash
+createdb -U admin bot_support
 psql -U admin -d bot_support -f bot_support.sql
 ```
 
