@@ -13,7 +13,7 @@ def get_data_and_send_message():
         
         for ticket in tickets:
             chat_id = ticket[1]
-            message_text = ticket[2] + '\n'
+            message_text = (ticket[2] or '') + '\n'
             
             if message_text == '\n':
                 message_text = 'Ваша заявка закрыта. Спасибо за Ваше обращение.'

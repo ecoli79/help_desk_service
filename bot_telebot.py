@@ -111,10 +111,22 @@ text_for_description2 = """
 Теперь опишите свою проблему максимально подробно,
 например: Поликлиника Гашкова 41, каб. 13, не включается компьютер. Телефон для связи 99999999."""
 
-data = {'ticket_type': '',
-        'ticket_text': '',
-        'image_path': '',
-        'voice_path': ''}
+userSessions = {}
+
+
+def _getSession(chatId):
+    if chatId not in userSessions:
+        userSessions[chatId] = {
+            'ticket_type': '',
+            'ticket_text': '',
+            'image_path': '',
+            'voice_path': '',
+        }
+    return userSessions[chatId]
+
+
+def _clearSession(chatId):
+    userSessions.pop(chatId, None)
 
 @bot.message_handler(commands= ['start'])
 def start_conversation(message):
@@ -123,84 +135,71 @@ def start_conversation(message):
 
 @bot.message_handler(func=lambda message: message.text in ticket_types)
 def second_step(message):
-    text_message = message.text
-    if text_message == 'Подписание':
-        text_for_reply = formatting.mbold(text_message)
-        data['ticket_type'] = text_message
-        bot.send_message(message.chat.id, f'Вы выбрали тип заявки: {text_for_reply}' + text_for_desctiption, parse_mode = 'Markdown', reply_markup = markup_ticket_types)
-    if text_message == 'Оборудование':
-        text_for_reply = formatting.mbold(text_message)
-        data['ticket_type'] = text_message
-        bot.send_message(message.chat.id, f'Вы выбрали тип заявки: {text_for_reply}' + text_for_desctiption, parse_mode='Markdown', reply_markup = markup_ticket_types)
-    if text_message == 'Доступ к системам':
-        text_for_reply = formatting.mbold(text_message)
-        data['ticket_type'] = text_message
-        bot.send_message(message.chat.id, f'Вы выбрали тип заявки: {text_for_reply}' + text_for_desctiption, parse_mode='Markdown', reply_markup = markup_ticket_types)
-    if text_message == 'Другое':
-        text_for_reply = formatting.mbold(text_message)
-        data['ticket_type'] = text_message
-        bot.send_message(message.chat.id, f'Вы выбрали тип заявки: {text_for_reply}' + text_for_desctiption, parse_mode='Markdown', reply_markup = markup_ticket_types)
+    session = _getSession(message.chat.id)
+    session['ticket_type'] = message.text
+    textForReply = formatting.mbold(message.text)
+    bot.send_message(
+        message.chat.id,
+        f'Вы выбрали тип заявки: {textForReply}' + text_for_desctiption,
+        parse_mode='Markdown',
+        reply_markup=markup_ticket_types,
+    )
 
 
 @bot.message_handler(content_types=['text'])
 def final_step(message):
-    if len(data['ticket_type']) == 0:
-        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup = markup_ticket_types) 
+    session = _getSession(message.chat.id)
+    if not session['ticket_type']:
+        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup=markup_ticket_types)
     else:
-        text_for_reply = cat_long_ticket_text(message.text)
-        if len(data['ticket_text']) == 0:
-            text_for_reply = formatting.mbold(text_for_reply)
-            data['ticket_text'] = message.text
-            ticket = Ticket(message.chat.id,
-                            message.id,
-                            message.from_user.username,
-                            message.from_user.full_name,
-                            data.get('ticket_type'),
-                            data.get('ticket_text'),
-                            data.get('image_path'),
-                            data.get('voice_path'))
-            ticket.ticket_save()
-            data['ticket_type'], data['ticket_text'], data['image_path'], data['voice_path'] = ('', '' , '', '')
-            
-            bot.send_message(message.chat.id, f'Ваша заявка: {text_for_reply} принята', parse_mode = 'Markdown', reply_markup = markup_ticket_types )          
+        textForReply = cat_long_ticket_text(message.text)
+        textForReply = formatting.mbold(textForReply)
+        session['ticket_text'] = message.text
+        ticket = Ticket(message.chat.id,
+                        message.id,
+                        message.from_user.username,
+                        message.from_user.full_name,
+                        session.get('ticket_type'),
+                        session.get('ticket_text'),
+                        session.get('image_path'),
+                        session.get('voice_path'))
+        ticket.ticket_save()
+        _clearSession(message.chat.id)
+        bot.send_message(message.chat.id, f'Ваша заявка: {textForReply} принята', parse_mode='Markdown', reply_markup=markup_ticket_types)          
     
 @bot.message_handler(content_types=['photo', 'document'])
 def save_image(message):
-    
-    if len(data.get('ticket_type')) == 0:
-        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup = markup_ticket_types) 
+    session = _getSession(message.chat.id)
+    if not session.get('ticket_type'):
+        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup=markup_ticket_types)
     else:
         if message.content_type == 'photo' or message.document.mime_type.startswith('image/'):
-            
             file = File(message, bot)
-            data['image_path'] = file.save()
-                    
-            bot.send_message(message.chat.id, 'Картинка загружена.' + text_for_description2, reply_markup = markup_ticket_types)
+            session['image_path'] = file.save()
+            bot.send_message(message.chat.id, 'Картинка загружена.' + text_for_description2, reply_markup=markup_ticket_types)
         else:
-            bot.send_message(message.chat.id, f'Вы приложили НЕ картинку. Попробуйте еще раз.', reply_markup = markup_ticket_types)
+            bot.send_message(message.chat.id, 'Вы приложили НЕ картинку. Попробуйте еще раз.', reply_markup=markup_ticket_types)
     
 @bot.message_handler(content_types=['voice', 'audio'])
 def save_voice_audio(message):
-    if len(data.get('ticket_type')) == 0:
-        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup = markup_ticket_types) 
+    session = _getSession(message.chat.id)
+    if not session.get('ticket_type'):
+        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup=markup_ticket_types)
     else:
-        if message.content_type == 'voice' or message.content_type == 'audio':
-            file = File(message, bot)
-            data['voice_path'] = file.save()
-            if data.get('ticket_type'):
-                data['ticket_text'] = 'Описание проблемы в голосовом сообщении. Смотри вложение в заявке.'
-                ticket = Ticket(message.chat.id,
-                                message.id,
-                                message.from_user.username,
-                                message.from_user.full_name,
-                                data.get('ticket_type'),
-                                data.get('ticket_text'),
-                                data.get('image_path'),
-                                data.get('voice_path'))
-                ticket.ticket_save()
-                data['ticket_type'], data['ticket_text'], data['image_path'], data['voice_path'] = ('', '' , '', '')
-            
-            bot.send_message(message.chat.id, 'Голосовое сообщение загружено. Ваша заявка принята в работу.', reply_markup = markup_ticket_types)
+        file = File(message, bot)
+        session['voice_path'] = file.save()
+        session['ticket_text'] = 'Описание проблемы в голосовом сообщении. Смотри вложение в заявке.'
+        ticket = Ticket(message.chat.id,
+                        message.id,
+                        message.from_user.username,
+                        message.from_user.full_name,
+                        session.get('ticket_type'),
+                        session.get('ticket_text'),
+                        session.get('image_path'),
+                        session.get('voice_path'))
+        ticket.ticket_save()
+        _clearSession(message.chat.id)
+        bot.send_message(message.chat.id, 'Голосовое сообщение загружено. Ваша заявка принята в работу.', reply_markup=markup_ticket_types)
 
     
 bot.infinity_polling()

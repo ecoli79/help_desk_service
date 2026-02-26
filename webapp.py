@@ -1,16 +1,10 @@
-import os
-import datetime
 from flask import Flask, render_template, request, redirect, url_for, session
-from flask_login import LoginManager, login_user, current_user, logout_user, login_required, UserMixin
-from flask_sqlalchemy import SQLAlchemy
-from forms import RegistrationForm, LoginForm, Databoard_searchform
-from models import User
-from configparser import ConfigParser
-# local module
+from flask_login import LoginManager, login_user, current_user, logout_user, login_required
+from forms import RegistrationForm, LoginForm
+from models import db, User
 import config
 import db_working
 
-db = SQLAlchemy()
 db_data_for_connect = config.get_config_data('postgresql')
 
 app = Flask(__name__)
@@ -20,31 +14,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{db_data_for_connect.get(
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
-#
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-
-
-class User(db.Model, UserMixin):
-    __tablename__ = 'employee'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50), unique = True, nullable = False)
-    password = db.Column(db.String(20), nullable = False)
-    firstname = db.Column(db.String(50), nullable = False)
-    lastname = db.Column(db.String(50), nullable = False)
-    email = db.Column(db.String(120), nullable = False)
-    position = db.Column(db.String(120), nullable = False)
-    date_insert = db.Column(db.DateTime(), default = datetime.datetime.now(), nullable = False)
-    date_update = db.Column(db.DateTime(), default = datetime.datetime.now(), nullable = False)
-    
-    def __repr__(self):
-        return '<User {}>'.format(self.username)
-    
-    def check_password(self, password):
-        return self.password == password
-
 
 
 @login_manager.user_loader
@@ -121,6 +94,7 @@ def dashboard():
 
 
 @app.route('/ticketditails/<ticket_id>', methods=['POST', 'GET'])
+@login_required
 def tickeditails(ticket_id):
     
     ticket = db_working.get_ticket(ticket_id)
@@ -161,6 +135,7 @@ def logout():
 
 
 @app.route('/work/<ticket_id>', methods=['POST', 'GET'])
+@login_required
 def get_ticket_work(ticket_id):
     
     if request.method == "POST":

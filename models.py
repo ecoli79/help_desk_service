@@ -14,8 +14,8 @@ class User(db.Model, UserMixin):
     lastname = db.Column(db.String(50), nullable = False)
     email = db.Column(db.String(120), nullable = False)
     position = db.Column(db.String(120), nullable = False)
-    date_insert = db.Column(db.DateTime(), default = datetime.datetime.now(), nullable = False)
-    date_update = db.Column(db.DateTime(), default = datetime.datetime.now(), nullable = False)
+    date_insert = db.Column(db.DateTime(), default=datetime.datetime.now, nullable=False)
+    date_update = db.Column(db.DateTime(), default=datetime.datetime.now, nullable=False)
     
     def __repr__(self):
         return '<User {}>'.format(self.username)
