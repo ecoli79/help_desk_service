@@ -85,7 +85,7 @@ token = YOUR_MAX_BOT_TOKEN
 
 ## Запуск
 
-Для полноценной работы сервиса необходимо запустить 4 процесса:
+Для полноценной работы сервиса необходимо запустить 5 процессов:
 
 ```bash
 # 1. Telegram-бот
@@ -102,13 +102,6 @@ python sheduler_for_response_bot.py
 
 # 5. Планировщик ответов MAX
 python sheduler_for_response_max.py
-```
-
-## Docker
-
-```bash
-docker build -t help-desk-service .
-docker run -p 8000:8000 help-desk-service
 ```
 
 ## Структура БД
