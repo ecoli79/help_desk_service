@@ -117,6 +117,15 @@ def get_ticket_types():
         return []
 
 
+def get_ticket_types_list():
+    """Return flat list of ticket type names from database.
+
+    Returns:
+        list[str]: ['Подписание', 'Оборудование', ...] or [] on error
+    """
+    return [row[0] for row in get_ticket_types()]
+
+
 def get_insert_user_telegram(telegramUsername, telegramFullname=''):
     """Get telegram user by username, creating if doesn't exist.
 

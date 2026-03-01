@@ -88,19 +88,15 @@ def cat_long_ticket_text(text):
     return text        
 
   
-ticket_types = ['Подписание', 'Оборудование', 'Доступ к системам', 'Другое']
-start_buttons = ['Новая заявка']
-
-Keys_for_tickets = [types.KeyboardButton(ticket_type) for ticket_type in ticket_types]
-Keys_for_start = [types.KeyboardButton(ticket_type) for ticket_type in start_buttons]
+def _getTicketTypes():
+    return db_working.get_ticket_types_list()
 
 
-markup_ticket_types = types.ReplyKeyboardMarkup(resize_keyboard = True, one_time_keyboard=True)
-markup_start_buttons = types.ReplyKeyboardMarkup()
-
-
-for key in Keys_for_tickets:
-    markup_ticket_types.add(key)
+def _buildTicketTypesMarkup():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    for typeName in _getTicketTypes():
+        markup.add(types.KeyboardButton(typeName))
+    return markup
 
 text_for_desctiption = """
 Если у вас есть картинка или фотография ошибки, прикрепите ее через скрепку.
@@ -128,12 +124,12 @@ def _getSession(chatId):
 def _clearSession(chatId):
     userSessions.pop(chatId, None)
 
-@bot.message_handler(commands= ['start'])
+@bot.message_handler(commands=['start'])
 def start_conversation(message):
-    bot.send_message(message.chat.id, 'Создание новой заявки. Выберите тип заявки, которую Вы хотите создать', reply_markup = markup_ticket_types)
+    bot.send_message(message.chat.id, 'Создание новой заявки. Выберите тип заявки, которую Вы хотите создать', reply_markup=_buildTicketTypesMarkup())
    
 
-@bot.message_handler(func=lambda message: message.text in ticket_types)
+@bot.message_handler(func=lambda message: message.text in _getTicketTypes())
 def second_step(message):
     session = _getSession(message.chat.id)
     session['ticket_type'] = message.text
@@ -142,7 +138,7 @@ def second_step(message):
         message.chat.id,
         f'Вы выбрали тип заявки: {textForReply}' + text_for_desctiption,
         parse_mode='Markdown',
-        reply_markup=markup_ticket_types,
+        reply_markup=_buildTicketTypesMarkup(),
     )
 
 
@@ -150,7 +146,7 @@ def second_step(message):
 def final_step(message):
     session = _getSession(message.chat.id)
     if not session['ticket_type']:
-        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup=markup_ticket_types)
+        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup=_buildTicketTypesMarkup())
     else:
         textForReply = cat_long_ticket_text(message.text)
         textForReply = formatting.mbold(textForReply)
@@ -165,26 +161,26 @@ def final_step(message):
                         session.get('voice_path'))
         ticket.ticket_save()
         _clearSession(message.chat.id)
-        bot.send_message(message.chat.id, f'Ваша заявка: {textForReply} принята', parse_mode='Markdown', reply_markup=markup_ticket_types)          
+        bot.send_message(message.chat.id, f'Ваша заявка: {textForReply} принята', parse_mode='Markdown', reply_markup=_buildTicketTypesMarkup())          
     
 @bot.message_handler(content_types=['photo', 'document'])
 def save_image(message):
     session = _getSession(message.chat.id)
     if not session.get('ticket_type'):
-        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup=markup_ticket_types)
+        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup=_buildTicketTypesMarkup())
     else:
         if message.content_type == 'photo' or message.document.mime_type.startswith('image/'):
             file = File(message, bot)
             session['image_path'] = file.save()
-            bot.send_message(message.chat.id, 'Картинка загружена.' + text_for_description2, reply_markup=markup_ticket_types)
+            bot.send_message(message.chat.id, 'Картинка загружена.' + text_for_description2, reply_markup=_buildTicketTypesMarkup())
         else:
-            bot.send_message(message.chat.id, 'Вы приложили НЕ картинку. Попробуйте еще раз.', reply_markup=markup_ticket_types)
+            bot.send_message(message.chat.id, 'Вы приложили НЕ картинку. Попробуйте еще раз.', reply_markup=_buildTicketTypesMarkup())
     
 @bot.message_handler(content_types=['voice', 'audio'])
 def save_voice_audio(message):
     session = _getSession(message.chat.id)
     if not session.get('ticket_type'):
-        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup=markup_ticket_types)
+        bot.send_message(message.chat.id, 'Вы не выбрали тип заявки. Сначала нужно выбрать тип заявки.', reply_markup=_buildTicketTypesMarkup())
     else:
         file = File(message, bot)
         session['voice_path'] = file.save()
@@ -199,7 +195,7 @@ def save_voice_audio(message):
                         session.get('voice_path'))
         ticket.ticket_save()
         _clearSession(message.chat.id)
-        bot.send_message(message.chat.id, 'Голосовое сообщение загружено. Ваша заявка принята в работу.', reply_markup=markup_ticket_types)
+        bot.send_message(message.chat.id, 'Голосовое сообщение загружено. Ваша заявка принята в работу.', reply_markup=_buildTicketTypesMarkup())
 
     
 bot.infinity_polling()

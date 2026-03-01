@@ -32,13 +32,6 @@ class TicketForm(StatesGroup):
     waitingForDescription = State()
 
 
-TICKET_TYPES = {
-    'signing': 'Подписание',
-    'equipment': 'Оборудование',
-    'access': 'Доступ к системам',
-    'other': 'Другое',
-}
-
 TEXT_FOR_DESCRIPTION = (
     'Если у вас есть картинка или фотография ошибки, прикрепите ее через скрепку.\n'
     'После этого опишите свою проблему как можно подробнее,\n'
@@ -52,16 +45,21 @@ TEXT_FOR_DESCRIPTION_AFTER_IMAGE = (
 )
 
 
+def _getTicketTypes():
+    return db_working.get_ticket_types_list()
+
+
 def buildTicketTypeKeyboard():
+    ticketTypes = _getTicketTypes()
     builder = InlineKeyboardBuilder()
-    builder.row(
-        CallbackButton(text='Подписание', payload='signing'),
-        CallbackButton(text='Оборудование', payload='equipment'),
-    )
-    builder.row(
-        CallbackButton(text='Доступ к системам', payload='access'),
-        CallbackButton(text='Другое', payload='other'),
-    )
+    row = []
+    for typeName in ticketTypes:
+        row.append(CallbackButton(text=typeName, payload=typeName))
+        if len(row) == 2:
+            builder.row(*row)
+            row = []
+    if row:
+        builder.row(*row)
     return builder.as_markup()
 
 
@@ -162,10 +160,11 @@ async def startCommand(event: MessageCreated, context: MemoryContext):
     )
 
 
-@dp.message_callback(F.callback.payload.in_(TICKET_TYPES.keys()))
+@dp.message_callback()
 async def ticketTypeSelected(event: MessageCallback, context: MemoryContext):
-    selectedKey = event.callback.payload
-    ticketTypeName = TICKET_TYPES[selectedKey]
+    ticketTypeName = event.callback.payload
+    if ticketTypeName not in _getTicketTypes():
+        return
 
     await context.set_state(TicketForm.waitingForDescription)
     await context.update_data(
