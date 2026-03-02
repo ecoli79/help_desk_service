@@ -29,6 +29,12 @@ CREATE TABLE IF NOT EXISTS ticket_types (
     date_update timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+INSERT INTO ticket_types (type_name) VALUES
+    ('Подписание'),
+    ('Оборудование'),
+    ('Доступ к системам'),
+    ('Другое');
+
 CREATE TABLE IF NOT EXISTS tickets (
     id                  bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id_created     bigint  NOT NULL REFERENCES users (id),
